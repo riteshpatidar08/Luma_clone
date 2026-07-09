@@ -57,3 +57,38 @@ body {
   background-color: var(--color-luma-bg);
   color: var(--color-luma-text-primary);
 }
+
+@keyframes float {
+  0% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(40px, -60px) scale(1.3); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+@keyframes float-delayed {
+  0% { transform: translate(0px, 0px) scale(1.3); }
+  50% { transform: translate(-50px, 50px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1.3); }
+}
+@keyframes float-slow {
+  0% { transform: translate(0px, 0px) scale(1.1); }
+  50% { transform: translate(20px, 30px) scale(1.25); }
+  100% { transform: translate(0px, 0px) scale(1.1); }
+}
+@keyframes text-shine {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-float-1 {
+  animation: float 14s infinite ease-in-out;
+}
+.animate-float-2 {
+  animation: float-delayed 18s infinite ease-in-out;
+}
+.animate-float-3 {
+  animation: float-slow 16s infinite ease-in-out;
+}
+.animate-text-shine {
+  background-size: 200% auto;
+  animation: text-shine 6s linear infinite;
+}
