@@ -10,17 +10,17 @@ export const login = async (req,res) => {
 
     await Otp.findOneAndUpdate(
         { email },
-        { code: otpCode, createdAt: new Date() },
+        { code: code, expiresIn: new Date() },
         { upsert: true, new: true } //what upsert do if user exist update the code if not exist create a new document for otp
       );
     
     const mailOptions = {
-        from: `"Luma Sign In" < ${process.env.EMAIL_USER}>`,
+        from: `"Nexus Sign In" < ${process.env.EMAIL_USER}>`,
         to: email,
-        subject: 'Your Luma Sign-In Code',
+        subject: 'Your Nexus Sign-In Code',
         html: `
           <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px; border: 1px solid #e5e4e7; rounded: 12px;">
-            <h2>Sign in to Luma</h2>
+            <h2>Sign in to Nexus</h2>
             <p>Please enter the following 6-digit code to complete your login:</p>
             <div style="font-size: 24px; font-weight: bold; letter-spacing: 4px; padding: 10px; background: #f4f3ec; text-align: center; border-radius: 6px;">
               ${code}
@@ -30,7 +30,8 @@ export const login = async (req,res) => {
         `
       };
       await transporter.sendMail(mailOptions);
-      return res.status(200).json({ message: "OTP sent successfully" });
+      return res.status(200).json({ message: 
+       `We sent a sign-in code to ${email}` });
     
   } catch (error) {
     console.error("Login Error:", error);

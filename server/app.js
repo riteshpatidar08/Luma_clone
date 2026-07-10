@@ -7,9 +7,11 @@
  import express from 'express';
  import { dbConnect } from './config/dbConnect.js';
  import authRouter from './routes/auth.route.js'
+ import cors from 'cors'
  const app = express() ;
 
 import dotenv from 'dotenv'; //npm i dotenv 
+app.use(cors())
 app.use(express.json())
 dotenv.config();  //configure the .env variables to use in the app
 dbConnect() //make connection with databse :

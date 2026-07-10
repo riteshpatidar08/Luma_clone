@@ -1,7 +1,8 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @theme {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Apple Color Emoji", "Inter", "Roboto", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Outfit", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
   /* Luma color scheme from screenshots */
   --color-luma-bg: #131517;
@@ -17,15 +18,15 @@
   --color-luma-text-light-gray: #d2d4d7;
   
   /* Accent colors */
-  --color-luma-blue: #4a8cff;
-  --color-luma-blue-hover: #4285f4;
-  --color-luma-indigo: #627eea;
-  --color-luma-yellow: #f2ca77;
-  --color-luma-yellow-bg: #edb541;
-  --color-luma-green: #77d86b;
-  --color-luma-green-bg: rgba(60, 189, 44, 0.13); /* #3cbd2c22 */
-  --color-luma-red: #ed2b32;
-  --color-luma-red-hover: #ea4335;
+  --color-luma-blue: #f2ca77;
+  --color-luma-blue-hover: #e0b358;
+  --color-luma-indigo: #d9a752;
+  --color-luma-yellow: #f5d695;
+  --color-luma-yellow-bg: #e0b358;
+  --color-luma-green: #e5b93c;
+  --color-luma-green-bg: rgba(229, 185, 60, 0.1);
+  --color-luma-red: #d9534f;
+  --color-luma-red-hover: #c9302c;
   
   /* Border colors */
   --color-luma-border-subtle: rgba(255, 255, 255, 0.04); /* #ffffff0a */
