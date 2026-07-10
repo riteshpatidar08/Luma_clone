@@ -1,6 +1,8 @@
 import Otp from '../models/otp.model.js';
+import User from '../models/user.model.js';
 import transporter from '../nodemailer/transporter.js';
-export const login = async (req,res) => {
+import jwt from 'jsonwebtoken'
+export const login = async (req, res) => {
   try {
     const { email } = req.body;
     //NOTE email validate
@@ -9,16 +11,16 @@ export const login = async (req,res) => {
     const code = Math.floor(100000 + Math.random() * 900000);
 
     await Otp.findOneAndUpdate(
-        { email },
-        { code: code, expiresIn: new Date() },
-        { upsert: true, new: true } //what upsert do if user exist update the code if not exist create a new document for otp
-      );
-    
+      { email },
+      { code: code, expiresIn: new Date() },
+      { upsert: true, new: true } //what upsert do if user exist update the code if not exist create a new document for otp
+    );
+
     const mailOptions = {
-        from: `"Nexus Sign In" < ${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: 'Your Nexus Sign-In Code',
-        html: `
+      from: `"Nexus Sign In" < ${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Your Nexus Sign-In Code',
+      html: `
           <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px; border: 1px solid #e5e4e7; rounded: 12px;">
             <h2>Sign in to Nexus</h2>
             <p>Please enter the following 6-digit code to complete your login:</p>
@@ -27,40 +29,43 @@ export const login = async (req,res) => {
             </div>
             <p style="font-size: 12px; color: #858585; margin-top: 15px;">This code will expire in 5 minutes.</p>
           </div>
-        `
-      };
-      await transporter.sendMail(mailOptions);
-      return res.status(200).json({ message: 
-       `We sent a sign-in code to ${email}` });
-    
+        `,
+    };
+    await transporter.sendMail(mailOptions);
+    return res
+      .status(200)
+      .json({ message: `We sent a sign-in code to ${email}` });
   } catch (error) {
-    console.error("Login Error:", error);
-    return res.status(500).json({ error: "Failed to send sign-in code" });
+    console.error('Login Error:', error);
+    return res.status(500).json({ error: 'Failed to send sign-in code' });
   }
+};
 
-}
+export const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({
+        message: 'Email and otp not found',
+      });
+    }
+    const existingOtp = await Otp.findOne({ email });
+    console.log(existingOtp);
 
+    if (otp !== existingOtp.code) {
+      return res.status(400).json({
+        message: 'OTP IS INCORRECT',
+      });
+    }
 
-export const verifyOtp = async(req,res) => {
-try {
-  const {email , otp} = req.body
- if(!email || !otp){
-  return res.status(400).json({
-    message : "Email and otp not found"
-  })
- }
- const existingOtp = await Otp.findOne({email});
- console.log(existingOtp)
+    const user = await User.findOne({ email });
+    if (!user) {
+      user = await User.create({ email });
+    }
 
- if(otp !== existingOtp.code){
-  return res.status(400).json({
-    message : "OTP IS INCORRECT"
-  })
- }
+    console.log(user);
+    //generate jwt
+jwt.sign()
  
-} catch (error) {
-  
-}
-
-
-}
+  } catch (error) {}
+};
