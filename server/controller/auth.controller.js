@@ -39,3 +39,28 @@ export const login = async (req,res) => {
   }
 
 }
+
+
+export const verifyOtp = async(req,res) => {
+try {
+  const {email , otp} = req.body
+ if(!email || !otp){
+  return res.status(400).json({
+    message : "Email and otp not found"
+  })
+ }
+ const existingOtp = await Otp.findOne({email});
+ console.log(existingOtp)
+
+ if(otp !== existingOtp.code){
+  return res.status(400).json({
+    message : "OTP IS INCORRECT"
+  })
+ }
+ 
+} catch (error) {
+  
+}
+
+
+}
