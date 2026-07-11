@@ -1,7 +1,7 @@
 import Otp from '../models/otp.model.js';
 import User from '../models/user.model.js';
 import transporter from '../nodemailer/transporter.js';
-import jwt from 'jsonwebtoken'
+import jwt from 'jsonwebtoken';
 export const login = async (req, res) => {
   try {
     const { email } = req.body;
@@ -44,28 +44,75 @@ export const login = async (req, res) => {
 export const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
+    console.log(email , otp)
+    console.log(typeof otp)
     if (!email || !otp) {
       return res.status(400).json({
         message: 'Email and otp not found',
       });
     }
     const existingOtp = await Otp.findOne({ email });
-    console.log(existingOtp);
+    console.log('existingotp' ,existingOtp);
 
-    if (otp !== existingOtp.code) {
+  if (Number(otp) !== existingOtp.code) {
       return res.status(400).json({
         message: 'OTP IS INCORRECT',
       });
     }
-
-    const user = await User.findOne({ email });
+let isNewUser = false;
+    let user = await User.findOne({ email });
     if (!user) {
-      user = await User.create({ email });
+      isNewUser = true;
+      const emailPrefix = email.split('@')[0];
+      const friendlyName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+      user = await User.create({ 
+        email,
+        name: friendlyName
+      });
     }
 
-    console.log(user);
+    console.log('user' ,user);
     //generate jwt
-jwt.sign()
- 
-  } catch (error) {}
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: '1d' }
+    );
+    console.log(token)
+
+    res.status(200).json({
+      token ,
+      isNewUser ,
+      data :{
+        message : "Login successfully"
+      }
+    })
+  } catch (error) {
+    console.error('Verify OTP Error:', error);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const { email, name, avatarUrl, bio } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required to update profile' });
+    }
+    const user = await User.findOneAndUpdate(
+      { email },
+      { name, avatar_url: avatarUrl, bio_short: bio },
+      { new: true }
+    )
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user
+    });
+  } catch (error) {
+    console.error('Update Profile Error:', error);
+    res.status(500).json({ error: 'Failed to update profile details' });
+  }
 };
