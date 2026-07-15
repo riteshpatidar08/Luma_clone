@@ -83,6 +83,7 @@ let isNewUser = false;
     res.status(200).json({
       token ,
       isNewUser ,
+      user,
       data :{
         message : "Login successfully"
       }

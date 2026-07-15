@@ -7,7 +7,10 @@ import { Toast } from './ui/Toast';
 import { Spinner } from './ui/Spinner';
 import { Avatar } from './ui/Avatar';
 import { cn } from '../lib/utils';
-
+import { useDispatch , useSelector } from 'react-redux';
+import { updateToken } from '../redux/authSlice.js';
+import { useEffect } from 'react';
+import {useNavigate}  from 'react-router-dom'
 const DEFAULT_AVATARS = [
   'https://cdn.lu.ma/avatars-default/avatar_1.png',
   'https://cdn.lu.ma/avatars-default/avatar_2.png',
@@ -45,6 +48,17 @@ export function SignIn() {
   // Clock state for Luma Header
   const [currentTime, setCurrentTime] = React.useState('');
 
+  const { token } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (token && !isNewUser) {
+      navigate('/');
+    }
+  }, [token, isNewUser, navigate]);
+
+
+const dispatch = useDispatch()
   React.useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -148,16 +162,19 @@ export function SignIn() {
       const data = await response.json();
       console.log(data)
       if (response.ok) {
-        setIsNewUser(data.isNewUser);
         if (data.isNewUser) {
+          setIsNewUser(true);
           const emailPrefix = emailValue.split('@')[0];
           const friendlyName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
           setNewName(friendlyName);
+          dispatch(updateToken(data));
           triggerToast("Welcome to Nexus! Let's set up your profile.", 'success');
         } else {
+          dispatch(updateToken(data));
           triggerToast('Successfully verified! Logging you in...', 'success');
           // Brief simulated delay to show the logging in state
           await new Promise((resolve) => setTimeout(resolve, 800));
+          navigate('/');
         }
       } else {
         triggerToast(data.error || 'Failed to verify code.', 'error');
@@ -195,6 +212,7 @@ export function SignIn() {
         triggerToast('Profile updated! Logging you in...', 'success');
         await new Promise((resolve) => setTimeout(resolve, 1000));
         setIsNewUser(false); // Done with onboarding flow
+        navigate('/');
       } else {
         triggerToast(data.error || 'Failed to update profile.', 'error');
       }
@@ -202,6 +220,7 @@ export function SignIn() {
       console.error(err);
       triggerToast('Profile saved successfully! Proceeding to app...', 'success');
       setIsNewUser(false);
+      navigate('/');
     } finally {
       setIsLoading(false);
     }
