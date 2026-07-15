@@ -52,7 +52,7 @@ export function SignIn() {
   const navigate = useNavigate();
 
   React.useEffect(() => {
-    if (token && !isNewUser) {
+    if(token && !isNewUser){
       navigate('/');
     }
   }, [token, isNewUser, navigate]);
