@@ -53,6 +53,7 @@ const EventSchema = new mongoose.Schema({
     },
     capacity: {
       type: Number,
+    
     },
   },
   organizer : {

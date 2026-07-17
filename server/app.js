@@ -9,7 +9,19 @@ import { dbConnect } from './config/dbConnect.js';
 import authRouter from './routes/auth.route.js';
 import eventRouter from './routes/event.routes.js';
 import cors from 'cors';
+import admin from 'firebase-admin'
+
+import serviceAccount from './key/test-1bf72-firebase-adminsdk-pg6k8-a8e3134601.json' with {type : 'json'} ;
+
 const app = express();
+
+console.log(admin)
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+// console.log(admin.get)
+
 
 import dotenv from 'dotenv'; //npm i dotenv
 app.use(cors());
@@ -24,3 +36,6 @@ app.use('/api/v1', eventRouter);
 app.listen(process.env.PORT, () => {
   console.log('server is running on 3000');
 });
+
+
+// npm i firebase-admin@13 installing the

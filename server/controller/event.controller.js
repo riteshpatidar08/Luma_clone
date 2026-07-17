@@ -19,11 +19,22 @@ export const createEvent = async (req, res) => {
       visibility,
       calender,
       schedule: {
-        startDatea: new Date(startDate),
+        startDate: new Date(startDate),
         endDate: new Date(endDate),
       },
     };
     console.log(EventData);
-    // await Event.create();
-  } catch (error) {}
+   const event =  await Event.create(EventData);
+   res.status(201).json({
+    message : "success",
+    data : event
+   })
+  } catch (error) {
+    res.status(500).json({
+      error : error.message
+    })
+  }
 };
+
+
+//NOTE  pagination from backend , sorting from backend , 
