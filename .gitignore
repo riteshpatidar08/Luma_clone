@@ -3,5 +3,6 @@ server/node_modules
 
 .env
 
+server/key
 
 # authentication and authorization  jwt 2fa micrsosoft entra id

@@ -7,10 +7,13 @@ import { Toast } from './ui/Toast';
 import { Spinner } from './ui/Spinner';
 import { Avatar } from './ui/Avatar';
 import { cn } from '../lib/utils';
-import { useDispatch , useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { updateToken } from '../redux/authSlice.js';
 import { useEffect } from 'react';
-import {useNavigate}  from 'react-router-dom'
+import { useNavigate } from 'react-router-dom';
+import { auth, googleAuthProvider } from './../config/firebase.js';
+import { signInWithPopup } from 'firebase/auth';
+import axios from 'axios';
 const DEFAULT_AVATARS = [
   'https://cdn.lu.ma/avatars-default/avatar_1.png',
   'https://cdn.lu.ma/avatars-default/avatar_2.png',
@@ -29,12 +32,14 @@ export function SignIn() {
   const [phoneValue, setPhoneValue] = React.useState('');
   const [step, setStep] = React.useState(1); // 1: Email/Phone, 2: OTP
   const [otpValue, setOtpValue] = React.useState('');
-  
+
   // Profile customization states for new users
   const [isNewUser, setIsNewUser] = React.useState(false);
   const [newName, setNewName] = React.useState('');
   const [newBio, setNewBio] = React.useState('');
-  const [selectedAvatar, setSelectedAvatar] = React.useState('https://cdn.lu.ma/avatars-default/avatar_9.png');
+  const [selectedAvatar, setSelectedAvatar] = React.useState(
+    'https://cdn.lu.ma/avatars-default/avatar_9.png'
+  );
 
   // Loading state matching Luma aesthetics
   const [isLoading, setIsLoading] = React.useState(false);
@@ -52,13 +57,12 @@ export function SignIn() {
   const navigate = useNavigate();
 
   React.useEffect(() => {
-    if(token && !isNewUser){
+    if (token && !isNewUser) {
       navigate('/');
     }
   }, [token, isNewUser, navigate]);
 
-
-const dispatch = useDispatch()
+  const dispatch = useDispatch();
   React.useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -99,7 +103,7 @@ const dispatch = useDispatch()
       triggerToast('Invalid email format.', 'warning');
       return;
     }
-    
+
     setIsLoading(true);
     setLoadingText('Sending code...');
     try {
@@ -126,6 +130,22 @@ const dispatch = useDispatch()
       setIsLoading(false);
     }
   };
+//handle the google login
+  const handleGoogleLogin =  async() => {
+    try {
+   const data =   await signInWithPopup(auth, googleAuthProvider);
+   const idtoken = await data.user.getIdToken();
+   console.log(idtoken);
+const res= await axios.post('http://localhost:3000/api/v1/verifyGoogleLogin', {idtoken});
+console.log(res)
+localStorage.setItem('token' , res.data.token)
+dispatch(updateToken(res.data));
+    } catch (error) {
+      
+    }
+   
+  };
+
 
   const handlePhoneSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -133,7 +153,7 @@ const dispatch = useDispatch()
       triggerToast('Please enter a valid phone number.', 'warning');
       return;
     }
-    
+
     setIsLoading(true);
     setLoadingText('Sending code...');
     // Simulate server response time for phone submit
@@ -149,7 +169,7 @@ const dispatch = useDispatch()
       triggerToast('Please enter a valid 6-digit code.', 'warning');
       return;
     }
-    console.log(otpValue)
+    console.log(otpValue);
 
     setIsLoading(true);
     setLoadingText('Verifying code...');
@@ -160,15 +180,19 @@ const dispatch = useDispatch()
         body: JSON.stringify({ email: emailValue, otp: otpValue }),
       });
       const data = await response.json();
-      console.log(data)
+      console.log(data);
       if (response.ok) {
         if (data.isNewUser) {
           setIsNewUser(true);
           const emailPrefix = emailValue.split('@')[0];
-          const friendlyName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+          const friendlyName =
+            emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
           setNewName(friendlyName);
           dispatch(updateToken(data));
-          triggerToast("Welcome to Nexus! Let's set up your profile.", 'success');
+          triggerToast(
+            "Welcome to Nexus! Let's set up your profile.",
+            'success'
+          );
         } else {
           dispatch(updateToken(data));
           triggerToast('Successfully verified! Logging you in...', 'success');
@@ -197,16 +221,19 @@ const dispatch = useDispatch()
     setIsLoading(true);
     setLoadingText('Saving your profile...');
     try {
-      const response = await fetch('http://localhost:3000/api/v1/updateProfile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: emailValue,
-          name: newName,
-          avatarUrl: selectedAvatar,
-          bio: newBio,
-        }),
-      });
+      const response = await fetch(
+        'http://localhost:3000/api/v1/updateProfile',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: emailValue,
+            name: newName,
+            avatarUrl: selectedAvatar,
+            bio: newBio,
+          }),
+        }
+      );
       const data = await response.json();
       if (response.ok) {
         triggerToast('Profile updated! Logging you in...', 'success');
@@ -218,7 +245,10 @@ const dispatch = useDispatch()
       }
     } catch (err) {
       console.error(err);
-      triggerToast('Profile saved successfully! Proceeding to app...', 'success');
+      triggerToast(
+        'Profile saved successfully! Proceeding to app...',
+        'success'
+      );
       setIsNewUser(false);
       navigate('/');
     } finally {
@@ -292,10 +322,10 @@ const dispatch = useDispatch()
               <div className="flex flex-col items-center text-center mb-5">
                 {/* Large Avatar Preview with glow ring */}
                 <div className="relative mb-3.5">
-                  <Avatar 
-                    src={selectedAvatar} 
-                    alt="Choose Avatar" 
-                    className="h-20 w-20 border-2 border-luma-blue ring-4 ring-luma-blue/15 shadow-xl transition-all" 
+                  <Avatar
+                    src={selectedAvatar}
+                    alt="Choose Avatar"
+                    className="h-20 w-20 border-2 border-luma-blue ring-4 ring-luma-blue/15 shadow-xl transition-all"
                   />
                 </div>
 
@@ -320,13 +350,17 @@ const dispatch = useDispatch()
                         type="button"
                         onClick={() => setSelectedAvatar(avatarUrl)}
                         className={cn(
-                          "relative rounded-full overflow-hidden h-9 w-9 border-2 transition-all hover:scale-105 active:scale-95 cursor-pointer",
-                          selectedAvatar === avatarUrl 
-                            ? "border-luma-blue ring-2 ring-luma-blue/20 scale-105" 
-                            : "border-transparent opacity-60 hover:opacity-100"
+                          'relative rounded-full overflow-hidden h-9 w-9 border-2 transition-all hover:scale-105 active:scale-95 cursor-pointer',
+                          selectedAvatar === avatarUrl
+                            ? 'border-luma-blue ring-2 ring-luma-blue/20 scale-105'
+                            : 'border-transparent opacity-60 hover:opacity-100'
                         )}
                       >
-                        <img src={avatarUrl} alt={`Avatar option ${idx + 1}`} className="h-full w-full object-cover" />
+                        <img
+                          src={avatarUrl}
+                          alt={`Avatar option ${idx + 1}`}
+                          className="h-full w-full object-cover"
+                        />
                       </button>
                     ))}
                   </div>
@@ -334,7 +368,10 @@ const dispatch = useDispatch()
 
                 {/* Name Input */}
                 <div className="space-y-1.5">
-                  <label htmlFor="displayName" className="text-sm font-medium text-luma-text-muted">
+                  <label
+                    htmlFor="displayName"
+                    className="text-sm font-medium text-luma-text-muted"
+                  >
                     Full Name
                   </label>
                   <Input
@@ -351,7 +388,10 @@ const dispatch = useDispatch()
 
                 {/* Bio Input */}
                 <div className="space-y-1.5">
-                  <label htmlFor="userBio" className="text-sm font-medium text-luma-text-muted">
+                  <label
+                    htmlFor="userBio"
+                    className="text-sm font-medium text-luma-text-muted"
+                  >
                     Short Bio (Optional)
                   </label>
                   <Input
@@ -425,7 +465,8 @@ const dispatch = useDispatch()
                           onClick={() => setLoginMethod('phone')}
                           className="text-luma-blue hover:text-luma-blue-hover flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
                         >
-                          <Smartphone className="h-3.5 w-3.5" /> Use Phone Number
+                          <Smartphone className="h-3.5 w-3.5" /> Use Phone
+                          Number
                         </button>
                       </div>
 
@@ -565,9 +606,7 @@ const dispatch = useDispatch()
                     {/* Social Logins */}
                     <div className="space-y-3">
                       <Button
-                        onClick={() =>
-                          triggerToast('Google Login Simulated.', 'success')
-                        }
+                        onClick={handleGoogleLogin}
                         disabled={isLoading}
                         variant="secondary"
                         className="w-full h-12 text-[15px] font-semibold rounded-[14px] justify-center gap-3 bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.06] hover:border-luma-blue/30 text-luma-text-primary hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
@@ -601,7 +640,10 @@ const dispatch = useDispatch()
 
                       <Button
                         onClick={() =>
-                          triggerToast('Passkey verification initiated...', 'info')
+                          triggerToast(
+                            'Passkey verification initiated...',
+                            'info'
+                          )
                         }
                         disabled={isLoading}
                         variant="secondary"

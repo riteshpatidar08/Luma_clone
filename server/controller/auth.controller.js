@@ -125,11 +125,9 @@ export const updateProfile = async (req, res) => {
 export const verifyGoogleLogin = async (req, res) => {
   try {
     const { idtoken } = req.body;
-   
     const decoded = await admin.auth().verifyIdToken(idtoken);
     console.log(decoded);
     let isNewUser = false;
-
     let user = await User.findOne({ email: decoded.email });
     console.log(user);
 
