@@ -130,22 +130,21 @@ export function SignIn() {
       setIsLoading(false);
     }
   };
-//handle the google login
-  const handleGoogleLogin =  async() => {
+  //handle the google login
+  const handleGoogleLogin = async () => {
     try {
-   const data =   await signInWithPopup(auth, googleAuthProvider);
-   const idtoken = await data.user.getIdToken();
-   console.log(idtoken);
-const res= await axios.post('http://localhost:3000/api/v1/verifyGoogleLogin', {idtoken});
-console.log(res)
-localStorage.setItem('token' , res.data.token)
-dispatch(updateToken(res.data));
-    } catch (error) {
-      
-    }
-   
+      const data = await signInWithPopup(auth, googleAuthProvider);
+      const idtoken = await data.user.getIdToken();
+      console.log(idtoken);
+      const res = await axios.post(
+        'http://localhost:3000/api/v1/verifyGoogleLogin',
+        { idtoken }
+      );
+      console.log(res);
+      localStorage.setItem('token', res.data.token);
+      dispatch(updateToken(res.data));
+    } catch (error) {}
   };
-
 
   const handlePhoneSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -274,7 +273,7 @@ dispatch(updateToken(res.data));
       </div>
 
       {/* Luma Header */}
-      <header className="w-full px-6 py-4 flex items-center justify-between z-10 relative">
+      {/* <header className="w-full px-6 py-4 flex items-center justify-between z-10 relative">
         <div className="flex items-center gap-3">
           <span className="font-bold text-[22px] tracking-tight text-luma-white cursor-pointer hover:opacity-90 flex items-center gap-1">
             nexus
@@ -302,7 +301,7 @@ dispatch(updateToken(res.data));
             Sign In
           </Button>
         </div>
-      </header>
+      </header> */}
 
       {/* Centered Sign In Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-12 z-10 relative">

@@ -29,8 +29,9 @@ app.use(express.json());
 dotenv.config(); //configure the .env variables to use in the app
 dbConnect(); //make connection with databse :
 
-app.use('/api/v1', authRouter);
-app.use('/api/v1', eventRouter);
+app.use('/api/v1', authRouter); //authentication logic
+app.use('/api/v1', eventRouter); //event logic 
+
 
 
 app.listen(process.env.PORT, () => {
