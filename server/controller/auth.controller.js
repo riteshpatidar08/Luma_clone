@@ -76,7 +76,7 @@ export const verifyOtp = async (req, res) => {
     console.log('user', user);
     //generate jwt
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, role: user.roles },
       process.env.JWT_SECRET_KEY,
       { expiresIn: '1d' }
     );
@@ -137,13 +137,13 @@ export const verifyGoogleLogin = async (req, res) => {
       const friendlyName =
         emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
       user = await User.create({
-       email :  decoded.email,
+        email: decoded.email,
         name: friendlyName,
       });
-      console.log(user)
+      console.log(user);
     }
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, role: user.roles },
       process.env.JWT_SECRET_KEY,
       { expiresIn: '1d' }
     );

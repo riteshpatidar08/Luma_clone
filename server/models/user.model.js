@@ -16,10 +16,14 @@ const UserSchema = new mongoose.Schema({
         type : String ,
         
     },
+    isActive : {
+        type : Boolean ,
+         default : true 
+    },
     roles : {
         type : String,
-        enum : ['user' , 'organizer' , 'admin'],
-        default  : 'user'
+        enum : ['attendee' , 'organizer' , 'admin'],
+        default  : 'attendee'
     },
     twoFactorEnabled: { type: Boolean, default: false },
 }, { timestamps: true })
