@@ -1,29 +1,38 @@
 import Event from '../models/event.model.js';
-
+import cloudinary from '../config/cloudinary.js';
 export const createEvent = async (req, res) => {
   try {
     const {
       title,
       description,
       visibility,
-      calender,
-      startDate,
-      endDate,
-      location,
-      options,
+      // calender,
+      // startDate,
+      // endDate,
+      // location,
+      // options,
     } = req.body;
     console.log(req.body);
+
+    console.log(req.file.path);
+
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'event_managment',
+    });
+
     const EventData = {
       title,
       description,
       visibility,
       calender,
+      bannerUrl: result.secure_url,
       schedule: {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
       },
     };
     console.log(EventData);
+
     const event = await Event.create(EventData);
     res.status(201).json({
       message: 'success',
@@ -41,7 +50,7 @@ export const createEvent = async (req, res) => {
 export const getEvents = async (req, res) => {
   try {
     const { limit, page, sort, searchQuery } = req.query;
-
+    console.log(searchQuery);
     let sortValue;
     if (sort === 'asc') sortValue = 1;
     if (sort === 'desc') sortValue = -1;

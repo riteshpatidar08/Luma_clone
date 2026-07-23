@@ -14,7 +14,10 @@ const EventSchema = new mongoose.Schema({
     enum: ['Private', 'Public'],
     required: true,
   },
-
+  bannerUrl : {
+    type : String
+  }
+,
   calender: {
     type: String,
     default: 'personal',
