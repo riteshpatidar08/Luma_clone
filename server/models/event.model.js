@@ -16,8 +16,17 @@ const EventSchema = new mongoose.Schema({
   },
   bannerUrl : {
     type : String
+  },
+
+  category  : { 
+    type : String
   }
 ,
+status : {
+  type : String , 
+  enum : ['pending' , 'approved' , 'rejected'],
+  default : 'pending'
+},
   calender: {
     type: String,
     default: 'personal',
@@ -66,9 +75,8 @@ const EventSchema = new mongoose.Schema({
   }
 });
 
+EventSchema.index({ title: 'text', description: 'text' });
+
 const Event = mongoose.model('Event', EventSchema);
-
-EventSchema.index({description : 'text'});
-
 
 export default Event;

@@ -150,12 +150,12 @@ export default function Navbar() {
 
       {/* Right: Timezone clock and conditional actions */}
       <div className="flex items-center gap-4 text-[13px]">
-        {token ? (
+        {token  ? (
           /* Protected/Authenticated Actions */
           <>
             <div className="flex items-center gap-3">
-              <Link to="/create-event">
-                <Button
+            {localStorage.getItem('role') === 'organizer' &&   <Link to="/register/event">
+           <Button
                   variant="ghost"
                   size="sm"
                   className="font-semibold text-luma-text-primary/80 hover:text-luma-text-primary flex items-center gap-1 hover:bg-white/[0.04] rounded-lg transition-all"
@@ -163,7 +163,7 @@ export default function Navbar() {
                   <Plus className="w-3.5 h-3.5 text-luma-blue" />
                   Create Event
                 </Button>
-              </Link>
+              </Link>}
               <button className="p-2 text-luma-text-primary/60 hover:text-luma-text-primary hover:bg-white/[0.04] rounded-lg transition-colors cursor-pointer">
                 <Search className="w-4.5 h-4.5" />
               </button>
@@ -192,7 +192,7 @@ export default function Navbar() {
                   <div className="px-3 py-2 border-b border-white/[0.04] mb-1">
                     <p className="text-xs text-luma-text-primary/40">Logged in as</p>
                     <p className="text-xs font-semibold text-luma-text-primary truncate">
-                      User
+                    {localStorage.getItem('role')}
                     </p>
                   </div>
                   <button

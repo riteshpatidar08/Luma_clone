@@ -4,6 +4,7 @@ import { SignIn } from './components/SignIn';
 import HomePage from './pages/HomePage';
 import ProtectedRoutes from './components/ProtectedRoutes';
 import Navbar from './components/Navbar';
+import CreateEventPage from './pages/CreateEventPage';
 
 function App() {
   return (
@@ -14,9 +15,10 @@ function App() {
       <Routes>
         {/* Sign In Route */}
         <Route path="/signin" element={<SignIn />} />
-
+        <Route path="/" element={<HomePage />} />
         <Route element={<ProtectedRoutes />}>
-          <Route path="/" element={<HomePage />} />
+     
+          <Route path='/register/event' element={<CreateEventPage/>}/>
         </Route>
 
         {/* login k badd hoga acess token milne k baad */}

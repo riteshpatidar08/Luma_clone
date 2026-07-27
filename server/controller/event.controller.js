@@ -6,30 +6,56 @@ export const createEvent = async (req, res) => {
       title,
       description,
       visibility,
-      // calender,
-      // startDate,
-      // endDate,
-      // location,
-      // options,
+      calender,
+      startDate,
+      endDate,
+      location,
+      address,
+      meetingLink,
+      ticketPrice,
+      requireApproval,
+      capacity,
+      options,
     } = req.body;
     console.log(req.body);
 
-    console.log(req.file.path);
+    let result = { secure_url: '' };
+    if (req.file) {
+      console.log(req.file.path);
+      result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'event_managment',
+      });
+    }
 
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'event_managment',
-    });
+    let parsedOptions = {};
+    if (options) {
+      try {
+        parsedOptions = typeof options === 'string' ? JSON.parse(options) : options;
+      } catch (e) {
+        console.error("Error parsing options:", e);
+      }
+    } else {
+      parsedOptions = {
+        ticketPrice: ticketPrice !== undefined && ticketPrice !== '' ? Number(ticketPrice) : 0,
+        requireApproval: requireApproval === 'true' || requireApproval === true,
+        capacity: capacity !== undefined && capacity !== '' && capacity !== 'unlimited' ? Number(capacity) : undefined,
+      };
+    }
 
     const EventData = {
       title,
       description,
       visibility,
-      calender,
+      calender: calender || 'personal',
       bannerUrl: result.secure_url,
       schedule: {
         startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        endData: endDate ? new Date(endDate) : undefined,
       },
+      location,
+      address,
+      meetingLink,
+      options: parsedOptions,
     };
     console.log(EventData);
 
@@ -68,7 +94,9 @@ export const getEvents = async (req, res) => {
       data: events,
     });
   } catch (error) {
-    res.send(error.message);
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };
 

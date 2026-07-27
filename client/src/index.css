@@ -100,3 +100,9 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Theme native dropdown menu options */
+select option {
+  background-color: var(--color-luma-card-solid) !important;
+  color: var(--color-luma-text-primary) !important;
+}

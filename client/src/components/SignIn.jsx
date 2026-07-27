@@ -8,7 +8,7 @@ import { Spinner } from './ui/Spinner';
 import { Avatar } from './ui/Avatar';
 import { cn } from '../lib/utils';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateToken } from '../redux/authSlice.js';
+import { updateToken  , updateRole} from '../redux/authSlice.js';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, googleAuthProvider } from './../config/firebase.js';
@@ -44,7 +44,6 @@ export function SignIn() {
   // Loading state matching Luma aesthetics
   const [isLoading, setIsLoading] = React.useState(false);
   const [loadingText, setLoadingText] = React.useState('');
-
   // Toast notifications
   const [toastOpen, setToastOpen] = React.useState(false);
   const [toastMessage, setToastMessage] = React.useState('');
@@ -90,7 +89,7 @@ export function SignIn() {
   const triggerToast = (message, type = 'success') => {
     setToastMessage(message);
     setToastType(type);
-    setToastOpen(true);
+  setToastOpen(true);
   };
 
   const handleEmailSubmit = async (e) => {
@@ -107,7 +106,7 @@ export function SignIn() {
     setIsLoading(true);
     setLoadingText('Sending code...');
     try {
-      const response = await fetch('http://localhost:3000/api/v1/login', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailValue }),
@@ -137,12 +136,13 @@ export function SignIn() {
       const idtoken = await data.user.getIdToken();
       console.log(idtoken);
       const res = await axios.post(
-        'http://localhost:3000/api/v1/verifyGoogleLogin',
+        `${import.meta.env.VITE_API_URL}/verifyGoogleLogin`,
         { idtoken }
       );
       console.log(res);
       localStorage.setItem('token', res.data.token);
       dispatch(updateToken(res.data));
+      dispatch(updateRole(res.data));
     } catch (error) {}
   };
 
@@ -173,7 +173,7 @@ export function SignIn() {
     setIsLoading(true);
     setLoadingText('Verifying code...');
     try {
-      const response = await fetch('http://localhost:3000/api/v1/verifyOtp', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/verifyOtp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailValue, otp: otpValue }),
