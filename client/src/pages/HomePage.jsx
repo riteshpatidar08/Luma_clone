@@ -79,7 +79,7 @@ function HomePage() {
 
   const handleCardClick = (event) => {
     setSelectedEvent(event);
-    setIsModalOpen(true);
+    // setIsModalOpen(true);
   };
 
   const handleRegister = async () => {

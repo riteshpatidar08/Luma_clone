@@ -12,9 +12,11 @@ import {
 } from 'lucide-react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
+import { Link } from 'react-router-dom';
 
 export function EventCard({ event, onClick }) {
   const {
+    
     title,
     description,
     visibility,
@@ -27,6 +29,7 @@ export function EventCard({ event, onClick }) {
     options
   } = event;
 
+  console.log(event)
   // Safely parse start and end dates
   const startDate = schedule?.startDate ? new Date(schedule.startDate) : null;
   const endDate = (schedule?.endDate || schedule?.endData) ? new Date(schedule.endDate || schedule.endData) : null;
@@ -62,9 +65,10 @@ export function EventCard({ event, onClick }) {
     : 'Free';
 
   return (
+    <Link to={`/eventDetails/${event._id}`}>
     <Card 
       className="group flex flex-col md:flex-row bg-[#121315]/45 border border-white/[0.06] rounded-[24px] overflow-hidden hover:border-white/[0.12] hover:bg-[#121315]/65 hover:shadow-[0_16px_40px_rgba(0,0,0,0.6)] hover:-translate-y-0.5 transition-all duration-300 relative cursor-pointer w-full"
-      onClick={onClick}
+      // onClick={onClick}
     >
       {/* Banner / Image Area */}
       <div className="relative h-44 md:h-auto md:w-64 overflow-hidden bg-gradient-to-br from-luma-blue/10 via-luma-indigo/5 to-luma-yellow/5 shrink-0">
@@ -224,5 +228,6 @@ export function EventCard({ event, onClick }) {
         </div>
       </div>
     </Card>
+    </Link>
   );
 }

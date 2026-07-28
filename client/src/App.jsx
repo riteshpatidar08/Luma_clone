@@ -5,7 +5,7 @@ import HomePage from './pages/HomePage';
 import ProtectedRoutes from './components/ProtectedRoutes';
 import Navbar from './components/Navbar';
 import CreateEventPage from './pages/CreateEventPage';
-
+import EventDetailsPage from './pages/EventDetailsPage';
 function App() {
   return (
     <>
@@ -16,6 +16,7 @@ function App() {
         {/* Sign In Route */}
         <Route path="/signin" element={<SignIn />} />
         <Route path="/" element={<HomePage />} />
+        <Route path='/eventdetails/:id' element={<EventDetailsPage/>}/>
         <Route element={<ProtectedRoutes />}>
      
           <Route path='/register/event' element={<CreateEventPage/>}/>
@@ -25,6 +26,7 @@ function App() {
         {/* Redirect any other route to /signin by default */}
         <Route path="*" element={<Navigate to="/signin" replace />} />
       </Routes>
+
     </BrowserRouter>
 
     </>

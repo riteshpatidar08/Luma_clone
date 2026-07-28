@@ -231,6 +231,8 @@ export default function Navbar() {
                 <Sparkles className="h-3.5 w-3.5 text-luma-yellow" />
                 Discover Events
               </a>
+
+              {location.pathname === '/signin' ? null :        <Link to='/signin'>
               <Button
                 variant="secondary"
                 size="xs"
@@ -238,6 +240,9 @@ export default function Navbar() {
               >
                 Sign In
               </Button>
+              </Link>     }
+       
+             
             </div>
           </>
         )}
