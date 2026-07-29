@@ -109,8 +109,9 @@ function EventDetailsPage() {
       const now = new Date();
       const diff = start - now;
       if (diff <= 0) {
+        console.log()
         setCountdown('Live Now');
-        return;
+        return;  
       }
       
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
