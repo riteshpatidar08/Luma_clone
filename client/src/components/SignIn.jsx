@@ -221,8 +221,8 @@ export function SignIn() {
     setLoadingText('Saving your profile...');
     try {
       const response = await fetch(
-        'http://localhost:3000/api/v1/updateProfile',
-        {
+      `${import.meta.env.VITE_API_URL}/updateProfile`,
+      {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
