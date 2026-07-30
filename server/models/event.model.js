@@ -72,7 +72,8 @@ status : {
     type : mongoose.Schema.Types.ObjectId,
     ref : "User"
 
-  }
+  } ,
+  attendee : [{type : mongoose.Schema.Types.ObjectId , ref : "User"}]
 });
 
 EventSchema.index({ title: 'text', description: 'text' });

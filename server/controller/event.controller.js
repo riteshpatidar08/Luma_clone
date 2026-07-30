@@ -1,5 +1,7 @@
 import Event from '../models/event.model.js';
 import cloudinary from '../config/cloudinary.js';
+import User from '../models/user.model.js';
+
 export const createEvent = async (req, res) => {
   try {
     const {
@@ -30,15 +32,22 @@ export const createEvent = async (req, res) => {
     let parsedOptions = {};
     if (options) {
       try {
-        parsedOptions = typeof options === 'string' ? JSON.parse(options) : options;
+        parsedOptions =
+          typeof options === 'string' ? JSON.parse(options) : options;
       } catch (e) {
-        console.error("Error parsing options:", e);
+        console.error('Error parsing options:', e);
       }
     } else {
       parsedOptions = {
-        ticketPrice: ticketPrice !== undefined && ticketPrice !== '' ? Number(ticketPrice) : 0,
+        ticketPrice:
+          ticketPrice !== undefined && ticketPrice !== ''
+            ? Number(ticketPrice)
+            : 0,
         requireApproval: requireApproval === 'true' || requireApproval === true,
-        capacity: capacity !== undefined && capacity !== '' && capacity !== 'unlimited' ? Number(capacity) : undefined,
+        capacity:
+          capacity !== undefined && capacity !== '' && capacity !== 'unlimited'
+            ? Number(capacity)
+            : undefined,
       };
     }
 
@@ -142,5 +151,47 @@ export const deleteEvent = async (req, res) => {
     });
   } catch (error) {
     res.send(error.message);
+  }
+};
+
+export const bookEvent = async (req, res) => {
+  try {
+    //event ki id  + jo user event book krega uska data
+    const { id } = req.params;
+    const { email, name } = req.body;
+
+    const event = await Event.findById(id);
+
+    if (!event) {
+      return res.status(400).json({
+        message: 'No event found',
+      });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // const passwordHash = await bcrypt.hash(password , 10)
+      user = await User.create({ name, email });
+      user.roles = 'attendee';
+      await user.save();
+    }
+    console.log(event.attendee);
+
+    if(event.attendee.some((id)=> user._id.toString() === id.toString())){
+      return res.status(400).json({
+ message : "Already booked"
+     } )
+    }
+
+    event.attendee.push(user._id);
+    await event.save();
+    res.status(201).json({
+      message: 'event book successfull , use your email to login your account',
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
   }
 };

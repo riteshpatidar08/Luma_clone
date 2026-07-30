@@ -49,6 +49,7 @@ function EventDetailsPage() {
     name: '',
     email: '',
     phone: '',
+    password : "" ,
   });
 
   // Toast States
@@ -639,6 +640,7 @@ function EventDetailsPage() {
                 </div>
               </div>
 
+
               {/* Form Footer */}
               <div className="px-6 py-4 bg-[#1a1c1e]/40 border-t border-white/[0.06] flex items-center justify-end gap-3 rounded-b-[28px]">
                 <Button
@@ -650,6 +652,7 @@ function EventDetailsPage() {
                 >
                   Cancel
                 </Button>
+
 
                 <Button
                   type="submit"

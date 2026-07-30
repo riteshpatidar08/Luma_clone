@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  bookEvent,
   createEvent,
   getEvents,
   getEventsById,
@@ -16,6 +17,9 @@ router.post(
   upload.single('bannerUrl'),
   createEvent
 );
+
+router.post('/bookevent/:id', bookEvent);
 router.get('/events', getEvents);
 router.get('/events/:id', getEventsById);
+
 export default router;
