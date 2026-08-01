@@ -4,6 +4,7 @@ import {
   createEvent,
   getEvents,
   getEventsById,
+  updateEventStatus,
 } from '../controller/event.controller.js';
 import verifyToken from '../middleware/verifyToken.js';
 import checkRole from '../middleware/checkRole.js';
@@ -20,6 +21,7 @@ router.post(
 
 router.post('/bookevent/:id', bookEvent);
 router.get('/events', getEvents);
+router.patch('/events/:id/status' , updateEventStatus)
 router.get('/events/:id', getEventsById);
 
 export default router;

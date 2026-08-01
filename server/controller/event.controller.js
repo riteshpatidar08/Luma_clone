@@ -89,12 +89,13 @@ export const getEvents = async (req, res) => {
     let sortValue;
     if (sort === 'asc') sortValue = 1;
     if (sort === 'desc') sortValue = -1;
-    const filter = {};
+    const filter = { status: 'approved' };
     if (searchQuery) filter.$text = { $search: searchQuery };
     const events = await Event.find(filter)
       .sort({ 'schedule.startDate': sortValue || 1 })
       .skip((page - 1) * Number(limit))
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .populate('organizer', 'email');
     const totalEventDocument = await Event.countDocuments();
 
     res.json({
@@ -178,13 +179,14 @@ export const bookEvent = async (req, res) => {
     }
     console.log(event.attendee);
 
-    if(event.attendee.some((id)=> user._id.toString() === id.toString())){
+    if (event.attendee.some((id) => user._id.toString() === id.toString())) {
       return res.status(400).json({
- message : "Already booked"
-     } )
+        message: 'Already booked',
+      });
     }
 
     event.attendee.push(user._id);
+
     await event.save();
     res.status(201).json({
       message: 'event book successfull , use your email to login your account',
@@ -195,3 +197,43 @@ export const bookEvent = async (req, res) => {
     });
   }
 };
+
+export const updateEventStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        message: "Status is invalid value must be 'approved  or rejected",
+      });
+    }
+    const event = await Event.findById(id);
+    event.status = status;
+    await event.save();
+    res.status(200).json({
+      message: 'status updated successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
+
+export const getAllEventsAdmin = async (req, res) => {
+  try {
+  } catch (error) {}
+};
+
+export const getEventStats = async (req, res) => {
+  try {
+  } catch (error) {}
+};
+
+// db.events.aggregate([
+//   { $match: { location: 'online' } },
+//   { $project: { title: 1, description: 1 } },
+//   { $sort: { title: 1 } },
+// ]);
+
+// db.events.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]);

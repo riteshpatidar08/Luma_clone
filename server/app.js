@@ -50,7 +50,7 @@ app.use('/api/v1', authRouter); //authentication logic
 app.use('/api/v1', eventRouter); //event logic 
 
 app.listen(process.env.PORT, () => {
-  console.log('server is running on 3000');
+  console.log(`server is running on ${process.env.PORT}`);
 });
 
 
