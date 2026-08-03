@@ -73,7 +73,11 @@ status : {
     ref : "User"
 
   } ,
-  attendee : [{type : mongoose.Schema.Types.ObjectId , ref : "User"}]
+  attendee : [{type : mongoose.Schema.Types.ObjectId , ref : "User"}],
+  embedding : {
+    type : [Number] ,
+    default : undefined
+  }
 });
 
 EventSchema.index({ title: 'text', description: 'text' });

@@ -1,7 +1,7 @@
 import Event from '../models/event.model.js';
 import cloudinary from '../config/cloudinary.js';
 import User from '../models/user.model.js';
-
+import { textToEmbeddings } from '../config/gemini.js';
 export const createEvent = async (req, res) => {
   try {
     const {
@@ -51,6 +51,9 @@ export const createEvent = async (req, res) => {
       };
     }
 
+    const text = `${title}]\n${location}\n${description}\n${ticketPrice}\n${event.status}\n${startDate}\n${endDate} `;
+    const vectors = await textToEmbeddings(text);
+
     const EventData = {
       title,
       description,
@@ -65,6 +68,7 @@ export const createEvent = async (req, res) => {
       address,
       meetingLink,
       options: parsedOptions,
+      embedding: vectors,
     };
     console.log(EventData);
 
@@ -237,3 +241,42 @@ export const getEventStats = async (req, res) => {
 // ]);
 
 // db.events.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]);
+
+
+export const chat = async(req,res)=>{
+ try {
+  const {currentMsg } = req.body ;
+  let queryVector ;
+    if(currentMsg){
+   queryVector =  await textToEmbeddings(currentMsg)
+    }
+    const matches = await Event.aggregate([{
+      $vectorSearch : {
+       
+          index: "event_vector_index",
+          path: "embedding",
+          queryVector: queryVector,
+          numCandidates: 100,
+          limit: 5
+        }
+   
+    }, {
+      $project : {
+        title : 1 ,
+        description : 1 ,
+        options : 1 ,
+        category : 1 ,
+        status : 1 ,
+        schedule : 1 ,
+        location : 1
+
+      }
+    }])
+  
+    res.json({
+      data  : matches
+    })
+ } catch (error) {
+  console.log(error)
+ }
+}

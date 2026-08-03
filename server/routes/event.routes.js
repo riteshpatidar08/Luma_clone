@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   bookEvent,
+  chat,
   createEvent,
   getEvents,
   getEventsById,
@@ -23,5 +24,6 @@ router.post('/bookevent/:id', bookEvent);
 router.get('/events', getEvents);
 router.patch('/events/:id/status' , updateEventStatus)
 router.get('/events/:id', getEventsById);
+router.post('/chat' , chat)
 
 export default router;
