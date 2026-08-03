@@ -8,7 +8,7 @@ console.log(process.env.GEMINI_API_KEY);
 export const textToEmbeddings = async (text) => {
   try {
     const res = await axios.post(
-      `${BASE_URL}/${EMEBEDDING_MODEL}:embedContent?key=AQ.Ab8RN6LKo-wJQu6TiNOMb76zF0WeAIcuQq8uVJbUVUxNv-L1sw`,
+      `${BASE_URL}/${EMEBEDDING_MODEL}:embedContent?key=${process.env.GEMINI_API_KEY}`,
       {
         content: {
           parts: [
