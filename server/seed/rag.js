@@ -1,58 +1,67 @@
+// One-off maintenance script -- NOT auto-run on server start.
+// Usage: npm run seed:rag
+//
+// 1. Backfills `embedding` on any Event missing one (e.g. after a schema
+//    change, or for events created before the RAG pipeline existed).
+// 2. Ensures the Atlas Vector Search index exists (no-op / safe to re-run --
+//    requires a MongoDB Atlas cluster; on plain community MongoDB this step
+//    will fail and the chatbot will just use its text-search fallback).
 import Event from '../models/event.model.js';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { textToEmbeddings } from '../config/gemini.js';
-//NOTE require a function which fetches the exisiting event and create the embeddings
 
 dotenv.config();
 
-async function createEmbeddingForExistingEvents() {
-  try {
-    const events = await Event.find();
-    // console.log(events);
-    for(let event of events){
-      const text = `${event.title}]\n${event.location}\n${event.description}\n${event.options.ticketPrice}\n${event.status}\n${event.schedule} `
-    const vectors = await textToEmbeddings(text)
-    console.log(vectors)
-    event.embedding = vectors ;
-    await event.save()
-    }
+const buildEmbeddingText = (e) =>
+  `${e.title}\n${e.category}\n${e.description}\nPrice: ${e.options?.ticketPrice ?? 0}\nStatus: ${e.status}\nStart: ${e.schedule?.startDate}\nLocation: ${e.location?.type === 'physical' ? e.location?.address : 'Online'}`;
 
+async function backfillEmbeddings() {
+  const events = await Event.find().select('+embedding');
+  let updated = 0;
+  for (const event of events) {
+    if (event.embedding?.length) continue;
+    const vectors = await textToEmbeddings(buildEmbeddingText(event));
+    if (vectors) {
+      event.embedding = vectors;
+      await event.save();
+      updated += 1;
+    }
+  }
+  console.log(`Backfilled embeddings for ${updated}/${events.length} events.`);
+}
+
+async function ensureVectorSearchIndex() {
+  try {
+    await mongoose.connection.db.collection('events').createSearchIndex({
+      name: 'event_vector_index',
+      type: 'vectorSearch',
+      definition: {
+        fields: [
+          {
+            type: 'vector',
+            path: 'embedding',
+            numDimensions: 768,
+            similarity: 'cosine',
+          },
+        ],
+      },
+    });
+    console.log('Vector search index created.');
   } catch (error) {
-    console.log(error.message)
+    console.log('Skipping vector search index (likely already exists, or not on Atlas):', error.message);
   }
 }
 
-async function createVectorSearchIndex(){
-    try {
-        mongoose.connection.db.collection('events').createSearchIndex({
-            name: "event_vector_index", // Index name
-            type: "vectorSearch",
-            definition : {
-            fields: [
-              {
-                type: "vector",
-                path: "embedding", // Field containing your vector
-                numDimensions: 768, // Must match your embedding size
-                similarity: "cosine" // cosine | euclidean | dotProduct
-              }
-            ]
-        
-      }  })
-    } catch (error) {
-        console.log(error)
-    }
- 
-}
-
-
 async function run() {
   try {
-    const connection = await mongoose.connect(process.env.MONGODB_URI);
-    createEmbeddingForExistingEvents();
-    createVectorSearchIndex();
+    await mongoose.connect(process.env.MONGODB_URI);
+    await backfillEmbeddings();
+    await ensureVectorSearchIndex();
   } catch (error) {
     console.log(error);
+  } finally {
+    await mongoose.disconnect();
   }
 }
 

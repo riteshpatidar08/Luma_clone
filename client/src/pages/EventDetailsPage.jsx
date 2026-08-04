@@ -1,27 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import axios from 'axios';
-import { 
-  Calendar, 
-  MapPin, 
-  Video, 
-  Clock, 
-  Users, 
-  Lock, 
-  Globe, 
-  ShieldCheck, 
-  ChevronLeft, 
-  Sparkles, 
-  Copy, 
-  Check, 
+import {
+  Calendar,
+  MapPin,
+  Video,
+  Clock,
+  Users,
+  Lock,
+  Globe,
+  ShieldCheck,
+  ChevronLeft,
+  Sparkles,
+  Copy,
+  Check,
   AlertTriangle,
   RefreshCw,
   ArrowRight,
   User,
   Phone,
   Mail,
-  Share2
+  Share2,
+  Settings
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -29,6 +29,8 @@ import { Input } from '../components/ui/Input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/Dialog';
 import { Toast } from '../components/ui/Toast';
 import { Spinner } from '../components/ui/Spinner';
+import { EventMap } from '../components/EventMap';
+import { EventsAPI, TicketsAPI } from '../lib/queries';
 
 function EventDetailsPage() {
   const { id } = useParams();
@@ -49,7 +51,6 @@ function EventDetailsPage() {
     name: '',
     email: '',
     phone: '',
-    password : "" ,
   });
 
   // Toast States
@@ -63,12 +64,13 @@ function EventDetailsPage() {
     setToastOpen(true);
   };
 
-  // Pre-fill email from auth if logged in
+  // Pre-fill name/email from auth if logged in
   useEffect(() => {
-    if (auth?.isAuthenticated && auth?.email) {
+    if (auth?.isAuthenticated) {
       setRegisterFormData((prev) => ({
         ...prev,
-        email: auth.email,
+        email: auth.email || prev.email,
+        name: auth.name || prev.name,
       }));
     }
   }, [auth]);
@@ -78,8 +80,7 @@ function EventDetailsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
-      const res = await axios.get(`${apiUrl}/events/${id}`);
+      const res = await EventsAPI.getById(id);
       if (res.data && res.data.success) {
         setEvent(res.data.data);
       } else {
@@ -143,8 +144,7 @@ function EventDetailsPage() {
   // Submit registration form
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    
-    // Simple Validation
+
     if (!registerFormData.name.trim()) {
       triggerToast('Name is required', 'warning');
       return;
@@ -161,35 +161,39 @@ function EventDetailsPage() {
     setIsRegistering(true);
 
     try {
-      // Simulate registration delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      triggerToast(
-        event.options?.requireApproval 
-          ? `Invite request submitted successfully for "${event.title}"!`
-          : `Successfully registered for "${event.title}"!`, 
-        'success'
-      );
-      
+      const res = await TicketsAPI.checkout(event._id, registerFormData);
+
+      if (res.data.checkoutUrl) {
+        // Paid event -- hand off to Stripe Checkout.
+        window.location.href = res.data.checkoutUrl;
+        return;
+      }
+
+      triggerToast(res.data.message || 'Registered successfully!', 'success');
       setIsRegisterModalOpen(false);
-      // Reset name and phone (keep email as it matches auth status)
-      setRegisterFormData(prev => ({
-        ...prev,
-        name: '',
-        phone: ''
-      }));
+      fetchEventDetails();
     } catch (err) {
       console.error(err);
-      triggerToast('Failed to register. Please try again.', 'error');
+      triggerToast(err.response?.data?.message || 'Failed to register. Please try again.', 'error');
     } finally {
       setIsRegistering(false);
     }
   };
 
+  const handleRegisterClick = () => {
+    if (!auth?.isAuthenticated) {
+      triggerToast('Please sign in to register for this event.', 'warning');
+      navigate('/signin');
+      return;
+    }
+    setIsRegisterModalOpen(true);
+  };
+
   // Copy address to clipboard
   const handleCopyAddress = () => {
-    if (event?.address) {
-      navigator.clipboard.writeText(event.address);
+    const address = event?.location?.address;
+    if (address) {
+      navigator.clipboard.writeText(address);
       setCopied(true);
       triggerToast('Address copied to clipboard!', 'success');
       setTimeout(() => setCopied(false), 2000);
@@ -200,9 +204,7 @@ function EventDetailsPage() {
   const getFormattedDates = (eventObj) => {
     if (!eventObj?.schedule?.startDate) return null;
     const start = new Date(eventObj.schedule.startDate);
-    const end = (eventObj.schedule.endDate || eventObj.schedule.endData) 
-      ? new Date(eventObj.schedule.endDate || eventObj.schedule.endData) 
-      : null;
+    const end = eventObj.schedule.endDate ? new Date(eventObj.schedule.endDate) : null;
 
     const options = {
       weekday: 'long',
@@ -367,7 +369,7 @@ function EventDetailsPage() {
                   <span>{event.calender} Calendar</span>
                 </span>
                 <span className="flex items-center gap-1.5 bg-[#121315]/60 border border-white/[0.06] rounded-full px-3 py-1 text-xs font-medium text-luma-text-light-gray">
-                  {event.location === 'online' ? (
+                  {event.location?.type === 'online' ? (
                     <>
                       <Video className="w-3.5 h-3.5 text-luma-blue" />
                       <span>Online Event</span>
@@ -404,12 +406,19 @@ function EventDetailsPage() {
               {/* Organizer Profile Card */}
               <div className="flex items-center gap-3.5 border-y border-white/[0.05] py-5">
                 <div className="h-11 w-11 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-luma-blue font-bold text-lg shadow-inner">
-                  {event.organizer?.profile?.name ? event.organizer.profile.name[0].toUpperCase() : 'O'}
+                  {event.organizer?.name ? event.organizer.name[0].toUpperCase() : 'O'}
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-[10px] text-luma-text-dimmed uppercase tracking-widest font-semibold">Hosted By</p>
-                  <p className="text-sm font-bold text-white mt-0.5">{event.organizer?.profile?.name || 'Luma Host'}</p>
+                  <p className="text-sm font-bold text-white mt-0.5">{event.organizer?.name || 'Nexus Host'}</p>
                 </div>
+                {auth?.id && event.organizer?._id === auth.id && (
+                  <Link to={`/organizer/events/${event._id}/edit`}>
+                    <Button variant="secondary" size="xs" className="flex items-center gap-1.5">
+                      <Settings className="w-3.5 h-3.5" /> Manage Event
+                    </Button>
+                  </Link>
+                )}
               </div>
 
               {/* Description About block */}
@@ -444,7 +453,7 @@ function EventDetailsPage() {
                   <div className="border-t border-white/[0.05] pt-4.5 space-y-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-luma-text-dimmed block">Location</span>
                     <div className="flex items-start gap-3">
-                      {event.location === 'online' ? (
+                      {event.location?.type === 'online' ? (
                         <>
                           <Video className="w-5 h-5 text-luma-blue mt-0.5 shrink-0" />
                           <div className="flex-1 min-w-0">
@@ -459,10 +468,10 @@ function EventDetailsPage() {
                           <MapPin className="w-5 h-5 text-luma-yellow mt-0.5 shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-white">Venue Location</p>
-                            <p className="text-xs text-luma-text-muted mt-1 leading-relaxed break-words">{event.address || 'Address details not provided'}</p>
-                            {event.address && (
-                              <button 
-                                onClick={handleCopyAddress} 
+                            <p className="text-xs text-luma-text-muted mt-1 leading-relaxed break-words">{event.location?.address || 'Address details not provided'}</p>
+                            {event.location?.address && (
+                              <button
+                                onClick={handleCopyAddress}
                                 className="flex items-center gap-1.5 mt-2.5 text-[10px] font-bold text-luma-blue hover:text-luma-yellow transition-colors cursor-pointer bg-transparent border-none outline-none p-0"
                               >
                                 {copied ? <Check className="w-3.5 h-3.5 text-luma-yellow" /> : <Copy className="w-3.5 h-3.5" />}
@@ -473,6 +482,14 @@ function EventDetailsPage() {
                         </>
                       )}
                     </div>
+                    {event.location?.type === 'physical' && event.location?.coordinates?.coordinates && (
+                      <EventMap
+                        lat={event.location.coordinates.coordinates[1]}
+                        lng={event.location.coordinates.coordinates[0]}
+                        label={event.location.address}
+                        className="h-40 w-full rounded-2xl overflow-hidden mt-3"
+                      />
+                    )}
                   </div>
 
                   {/* Pricing and Capacity limits */}
@@ -520,14 +537,30 @@ function EventDetailsPage() {
 
                   {/* Register action button */}
                   <div className="border-t border-white/[0.05] pt-5">
-                    <Button
-                      onClick={() => setIsRegisterModalOpen(true)}
-                      variant="primary"
-                      className="w-full h-11 text-xs font-bold rounded-xl bg-white hover:bg-white/95 text-black hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-[0_4px_18px_rgba(255,255,255,0.08)] flex items-center justify-center gap-2"
-                    >
-                      <span>{event.options?.requireApproval ? 'Request invite' : 'Register for Event'}</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
+                    {(() => {
+                      const isSoldOut = event.options?.capacity && event.ticketsSold >= event.options.capacity;
+                      const isOwner = auth?.id && event.organizer?._id === auth.id;
+                      if (isOwner) {
+                        return (
+                          <Link to={`/organizer/events/${event._id}/attendees`}>
+                            <Button variant="secondary" className="w-full h-11 text-xs font-bold rounded-xl flex items-center justify-center gap-2">
+                              <Users className="w-4 h-4" /> View Attendees
+                            </Button>
+                          </Link>
+                        );
+                      }
+                      return (
+                        <Button
+                          onClick={handleRegisterClick}
+                          disabled={isSoldOut}
+                          variant="primary"
+                          className="w-full h-11 text-xs font-bold rounded-xl bg-white hover:bg-white/95 text-black hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-[0_4px_18px_rgba(255,255,255,0.08)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+                        >
+                          <span>{isSoldOut ? 'Sold Out' : event.options?.requireApproval ? 'Request invite' : 'Register for Event'}</span>
+                          {!isSoldOut && <ArrowRight className="w-4 h-4" />}
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </div>
               </Card>

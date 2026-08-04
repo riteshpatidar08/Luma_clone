@@ -14,22 +14,21 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Link } from 'react-router-dom';
 
-export function EventCard({ event, onClick }) {
+export function EventCard({ event, onClick, distanceKm }) {
   const {
-    
     title,
     description,
     visibility,
     bannerUrl,
     calender,
+    category,
     schedule,
-    location,
-    address,
-    meetingLink,
     options
   } = event;
 
-  console.log(event)
+  const location = event.location?.type || event.location;
+  const address = event.location?.address || event.address;
+  const meetingLink = event.location?.meetingLink || event.meetingLink;
   // Safely parse start and end dates
   const startDate = schedule?.startDate ? new Date(schedule.startDate) : null;
   const endDate = (schedule?.endDate || schedule?.endData) ? new Date(schedule.endDate || schedule.endData) : null;
@@ -83,7 +82,7 @@ export function EventCard({ event, onClick }) {
             {/* Ambient pattern for event placeholder */}
             <div className="absolute inset-0 bg-grid-white/[0.02]" />
             <Calendar className="w-10 h-10 text-luma-blue/60 mb-2 group-hover:rotate-12 transition-transform duration-300" />
-            <span className="text-xs text-luma-text-muted font-medium uppercase tracking-widest">{calender || 'Event'}</span>
+            <span className="text-xs text-luma-text-muted font-medium uppercase tracking-widest">{category || calender || 'Event'}</span>
           </div>
         )}
 
@@ -92,6 +91,13 @@ export function EventCard({ event, onClick }) {
           <div className="absolute top-4 left-4 bg-luma-bg/90 backdrop-blur-md border border-white/[0.08] rounded-2xl p-2 flex flex-col items-center justify-center min-w-[54px] min-h-[58px] shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
             <span className="text-[10px] font-bold tracking-wider text-luma-blue leading-none mb-0.5">{month}</span>
             <span className="text-xl font-extrabold text-white leading-none">{day}</span>
+          </div>
+        )}
+
+        {/* Distance Badge (Discover page only) */}
+        {typeof distanceKm === 'number' && (
+          <div className="absolute bottom-4 left-4 bg-luma-bg/90 backdrop-blur-md border border-white/[0.08] rounded-full px-2.5 py-1 text-[10px] font-bold text-luma-yellow shadow-md">
+            {distanceKm < 1 ? `${Math.round(distanceKm * 1000)}m away` : `${distanceKm.toFixed(1)}km away`}
           </div>
         )}
 

@@ -14,9 +14,12 @@
     "axios": "^1.18.1",
     "clsx": "^2.1.1",
     "firebase": "^12.16.0",
+    "html5-qrcode": "^2.3.8",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.23.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-leaflet": "^5.0.0",
     "react-redux": "^9.3.0",
     "react-router-dom": "^7.18.1",
     "tailwind-merge": "^3.6.0"

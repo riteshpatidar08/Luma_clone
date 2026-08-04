@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Key, Smartphone, Mail, Globe, Sparkles, LogIn } from 'lucide-react';
+import { Key, Mail, LogIn } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
@@ -8,12 +8,12 @@ import { Spinner } from './ui/Spinner';
 import { Avatar } from './ui/Avatar';
 import { cn } from '../lib/utils';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateToken  , updateRole} from '../redux/authSlice.js';
-import { useEffect } from 'react';
+import { updateToken } from '../redux/authSlice.js';
 import { useNavigate } from 'react-router-dom';
 import { auth, googleAuthProvider } from './../config/firebase.js';
 import { signInWithPopup } from 'firebase/auth';
-import axios from 'axios';
+import api from '../lib/api.js';
+
 const DEFAULT_AVATARS = [
   'https://cdn.lu.ma/avatars-default/avatar_1.png',
   'https://cdn.lu.ma/avatars-default/avatar_2.png',
@@ -27,10 +27,8 @@ const DEFAULT_AVATARS = [
 ];
 
 export function SignIn() {
-  const [loginMethod, setLoginMethod] = React.useState('email'); // "email" or "phone"
   const [emailValue, setEmailValue] = React.useState('');
-  const [phoneValue, setPhoneValue] = React.useState('');
-  const [step, setStep] = React.useState(1); // 1: Email/Phone, 2: OTP
+  const [step, setStep] = React.useState(1); // 1: Email, 2: OTP
   const [otpValue, setOtpValue] = React.useState('');
 
   // Profile customization states for new users
@@ -49,9 +47,6 @@ export function SignIn() {
   const [toastMessage, setToastMessage] = React.useState('');
   const [toastType, setToastType] = React.useState('success');
 
-  // Clock state for Luma Header
-  const [currentTime, setCurrentTime] = React.useState('');
-
   const { token } = useSelector((state) => state.auth);
   const navigate = useNavigate();
 
@@ -62,29 +57,6 @@ export function SignIn() {
   }, [token, isNewUser, navigate]);
 
   const dispatch = useDispatch();
-  React.useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-      const offsetMinutes = -now.getTimezoneOffset();
-      const offsetHours = Math.floor(Math.abs(offsetMinutes) / 60);
-      const offsetRemaining = Math.abs(offsetMinutes) % 60;
-      const offsetSign = offsetMinutes >= 0 ? '+' : '-';
-      const timezoneStr = `GMT${offsetSign}${offsetHours}:${offsetRemaining
-        .toString()
-        .padStart(2, '0')}`;
-
-      setCurrentTime(`${timeStr} ${timezoneStr}`);
-    };
-
-    updateTime();
-    const timer = setInterval(updateTime, 60000);
-    return () => clearInterval(timer);
-  }, []);
 
   const triggerToast = (message, type = 'success') => {
     setToastMessage(message);
@@ -106,25 +78,11 @@ export function SignIn() {
     setIsLoading(true);
     setLoadingText('Sending code...');
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailValue }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        triggerToast(`Verification code sent to ${emailValue}!`, 'success');
-        setStep(2);
-      } else {
-        triggerToast(data.error || 'Failed to send code.', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      triggerToast(
-        'Failed to connect to authentication server. Simulating OTP...',
-        'info'
-      );
+      await api.post('/login', { email: emailValue });
+      triggerToast(`Verification code sent to ${emailValue}!`, 'success');
       setStep(2);
+    } catch (err) {
+      triggerToast(err.response?.data?.error || 'Failed to send code.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -134,32 +92,13 @@ export function SignIn() {
     try {
       const data = await signInWithPopup(auth, googleAuthProvider);
       const idtoken = await data.user.getIdToken();
-      console.log(idtoken);
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/verifyGoogleLogin`,
-        { idtoken }
-      );
-      console.log(res);
-      localStorage.setItem('token', res.data.token);
+      const res = await api.post('/verifyGoogleLogin', { idtoken });
       dispatch(updateToken(res.data));
-      dispatch(updateRole(res.data));
-    } catch (error) {}
-  };
-
-  const handlePhoneSubmit = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!phoneValue || phoneValue.length < 7) {
-      triggerToast('Please enter a valid phone number.', 'warning');
-      return;
+      navigate('/');
+    } catch (error) {
+      console.error(error);
+      triggerToast('Google sign-in failed.', 'error');
     }
-
-    setIsLoading(true);
-    setLoadingText('Sending code...');
-    // Simulate server response time for phone submit
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setIsLoading(false);
-    triggerToast(`Verification code sent to ${phoneValue}!`, 'success');
-    setStep(2);
   };
 
   const handleOtpSubmit = async (e) => {
@@ -168,43 +107,27 @@ export function SignIn() {
       triggerToast('Please enter a valid 6-digit code.', 'warning');
       return;
     }
-    console.log(otpValue);
 
     setIsLoading(true);
     setLoadingText('Verifying code...');
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/verifyOtp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailValue, otp: otpValue }),
-      });
-      const data = await response.json();
-      console.log(data);
-      if (response.ok) {
-        if (data.isNewUser) {
-          setIsNewUser(true);
-          const emailPrefix = emailValue.split('@')[0];
-          const friendlyName =
-            emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
-          setNewName(friendlyName);
-          dispatch(updateToken(data));
-          triggerToast(
-            "Welcome to Nexus! Let's set up your profile.",
-            'success'
-          );
-        } else {
-          dispatch(updateToken(data));
-          triggerToast('Successfully verified! Logging you in...', 'success');
-          // Brief simulated delay to show the logging in state
-          await new Promise((resolve) => setTimeout(resolve, 800));
-          navigate('/');
-        }
+      const res = await api.post('/verifyOtp', { email: emailValue, otp: otpValue });
+      const data = res.data;
+      if (data.isNewUser) {
+        setIsNewUser(true);
+        const emailPrefix = emailValue.split('@')[0];
+        const friendlyName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+        setNewName(friendlyName);
+        dispatch(updateToken(data));
+        triggerToast("Welcome to Nexus! Let's set up your profile.", 'success');
       } else {
-        triggerToast(data.error || 'Failed to verify code.', 'error');
+        dispatch(updateToken(data));
+        triggerToast('Successfully verified! Logging you in...', 'success');
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        navigate('/');
       }
     } catch (err) {
-      console.error(err.message);
-      triggerToast(err.message, 'error');
+      triggerToast(err.response?.data?.message || 'Failed to verify code.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -220,36 +143,19 @@ export function SignIn() {
     setIsLoading(true);
     setLoadingText('Saving your profile...');
     try {
-      const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/updateProfile`,
-      {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: emailValue,
-            name: newName,
-            avatarUrl: selectedAvatar,
-            bio: newBio,
-          }),
-        }
-      );
-      const data = await response.json();
-      if (response.ok) {
-        triggerToast('Profile updated! Logging you in...', 'success');
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setIsNewUser(false); // Done with onboarding flow
-        navigate('/');
-      } else {
-        triggerToast(data.error || 'Failed to update profile.', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      triggerToast(
-        'Profile saved successfully! Proceeding to app...',
-        'success'
-      );
+      const res = await api.post('/updateProfile', {
+        email: emailValue,
+        name: newName,
+        avatarUrl: selectedAvatar,
+        bio: newBio,
+      });
+      dispatch(updateToken(res.data));
+      triggerToast('Profile updated! Logging you in...', 'success');
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setIsNewUser(false);
       navigate('/');
+    } catch (err) {
+      triggerToast(err.response?.data?.error || 'Failed to update profile.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -271,37 +177,6 @@ export function SignIn() {
         <div className="absolute bottom-[20%] right-[10%] w-[400px] h-[400px] rounded-full bg-luma-indigo/20 blur-[130px] animate-float-2" />
         <div className="absolute top-[40%] right-[25%] w-[300px] h-[300px] rounded-full bg-luma-yellow/5 blur-[100px] animate-float-3" />
       </div>
-
-      {/* Luma Header */}
-      {/* <header className="w-full px-6 py-4 flex items-center justify-between z-10 relative">
-        <div className="flex items-center gap-3">
-          <span className="font-bold text-[22px] tracking-tight text-luma-white cursor-pointer hover:opacity-90 flex items-center gap-1">
-            nexus
-            <span className="text-luma-blue font-medium animate-pulse">*</span>
-          </span>
-        </div>
-
-        <div className="flex items-center gap-4 sm:gap-6 text-[13px] text-luma-text-muted">
-          <div className="hidden md:flex items-center gap-1.5 bg-white/[0.03] border border-white/[0.06] rounded-full px-3 py-1 font-sans text-[11px] text-luma-text-light-gray shadow-inner">
-            <Globe className="h-3 w-3 text-luma-blue animate-spin-[20s]" />
-            <span>{currentTime}</span>
-          </div>
-          <a
-            href="#"
-            className="hover:text-luma-text-primary transition-colors flex items-center gap-1 font-medium"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-luma-yellow" />
-            Discover Events
-          </a>
-          <Button
-            variant="secondary"
-            size="xs"
-            className="h-[32px] rounded-lg px-3.5 bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] hover:border-white/20 text-luma-white font-semibold transition-all"
-          >
-            Sign In
-          </Button>
-        </div>
-      </header> */}
 
       {/* Centered Sign In Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-12 z-10 relative">
@@ -443,8 +318,7 @@ export function SignIn() {
                     Verify Your Account
                   </h2>
                   <p className="mt-2 text-sm text-luma-text-muted">
-                    Enter the 6-digit code sent to{' '}
-                    {loginMethod === 'email' ? emailValue : phoneValue}.
+                    Enter the 6-digit code sent to {emailValue}.
                   </p>
                 </div>
               )}
@@ -452,83 +326,35 @@ export function SignIn() {
               {/* Form wrapper */}
               <div className="mt-7 space-y-5">
                 {step === 1 ? (
-                  loginMethod === 'email' ? (
-                    <form onSubmit={handleEmailSubmit} className="space-y-4">
-                      <div className="flex items-center justify-between text-sm font-medium">
-                        <label htmlFor="email" className="text-luma-text-muted">
-                          Email
-                        </label>
-                        <button
-                          type="button"
-                          disabled={isLoading}
-                          onClick={() => setLoginMethod('phone')}
-                          className="text-luma-blue hover:text-luma-blue-hover flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
-                        >
-                          <Smartphone className="h-3.5 w-3.5" /> Use Phone
-                          Number
-                        </button>
-                      </div>
+                  <form onSubmit={handleEmailSubmit} className="space-y-4">
+                    <div className="flex items-center justify-between text-sm font-medium">
+                      <label htmlFor="email" className="text-luma-text-muted">
+                        Email
+                      </label>
+                    </div>
 
-                      <div className="relative flex items-center">
-                        <Mail className="absolute left-4 h-4.5 w-4.5 text-luma-text-gray" />
-                        <Input
-                          id="email"
-                          type="email"
-                          disabled={isLoading}
-                          placeholder="you@email.com"
-                          value={emailValue}
-                          onChange={(e) => setEmailValue(e.target.value)}
-                          className="pl-11 pr-4 w-full bg-luma-black/30 border-white/[0.08] focus:border-luma-blue focus:ring-1 focus:ring-luma-blue h-12 text-base rounded-[14px] placeholder:text-luma-text-gray transition-all disabled:opacity-50"
-                        />
-                      </div>
-
-                      <Button
-                        type="submit"
-                        variant="primary"
+                    <div className="relative flex items-center">
+                      <Mail className="absolute left-4 h-4.5 w-4.5 text-luma-text-gray" />
+                      <Input
+                        id="email"
+                        type="email"
                         disabled={isLoading}
-                        className="w-full h-12 text-[15px] font-semibold rounded-[14px] mt-2 bg-white hover:bg-white/95 text-black hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-[0_4px_18px_rgba(255,255,255,0.12)] disabled:opacity-50 disabled:pointer-events-none"
-                      >
-                        Continue with Email
-                      </Button>
-                    </form>
-                  ) : (
-                    <form onSubmit={handlePhoneSubmit} className="space-y-4">
-                      <div className="flex items-center justify-between text-sm font-medium">
-                        <label htmlFor="phone" className="text-luma-text-muted">
-                          Phone Number
-                        </label>
-                        <button
-                          type="button"
-                          disabled={isLoading}
-                          onClick={() => setLoginMethod('email')}
-                          className="text-luma-blue hover:text-luma-blue-hover flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
-                        >
-                          <Mail className="h-3.5 w-3.5" /> Use Email
-                        </button>
-                      </div>
+                        placeholder="you@email.com"
+                        value={emailValue}
+                        onChange={(e) => setEmailValue(e.target.value)}
+                        className="pl-11 pr-4 w-full bg-luma-black/30 border-white/[0.08] focus:border-luma-blue focus:ring-1 focus:ring-luma-blue h-12 text-base rounded-[14px] placeholder:text-luma-text-gray transition-all disabled:opacity-50"
+                      />
+                    </div>
 
-                      <div className="relative flex items-center">
-                        <Input
-                          id="phone"
-                          type="tel"
-                          disabled={isLoading}
-                          placeholder="+91 81234 56789"
-                          value={phoneValue}
-                          onChange={(e) => setPhoneValue(e.target.value)}
-                          className="w-full bg-luma-black/30 border-white/[0.08] focus:border-luma-blue focus:ring-1 focus:ring-luma-blue h-12 text-base rounded-[14px] px-4 placeholder:text-luma-text-gray transition-all disabled:opacity-50"
-                        />
-                      </div>
-
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        disabled={isLoading}
-                        className="w-full h-12 text-[15px] font-semibold rounded-[14px] mt-2 bg-white hover:bg-white/95 text-black hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-[0_4px_18px_rgba(255,255,255,0.12)] disabled:opacity-50 disabled:pointer-events-none"
-                      >
-                        Continue with Phone
-                      </Button>
-                    </form>
-                  )
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      disabled={isLoading}
+                      className="w-full h-12 text-[15px] font-semibold rounded-[14px] mt-2 bg-white hover:bg-white/95 text-black hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-[0_4px_18px_rgba(255,255,255,0.12)] disabled:opacity-50 disabled:pointer-events-none"
+                    >
+                      Continue with Email
+                    </Button>
+                  </form>
                 ) : (
                   // Step 2: Verification Code Input
                   <form onSubmit={handleOtpSubmit} className="space-y-4">
@@ -576,13 +402,7 @@ export function SignIn() {
                       <button
                         type="button"
                         disabled={isLoading}
-                        onClick={() => {
-                          if (loginMethod === 'email') {
-                            handleEmailSubmit();
-                          } else {
-                            handlePhoneSubmit();
-                          }
-                        }}
+                        onClick={() => handleEmailSubmit()}
                         className="text-[11px] text-luma-text-gray hover:text-luma-blue transition-colors cursor-pointer bg-transparent border-none p-0 outline-none disabled:opacity-50 disabled:pointer-events-none"
                       >
                         Resend Code
@@ -635,21 +455,6 @@ export function SignIn() {
                           />
                         </svg>
                         Sign in with Google
-                      </Button>
-
-                      <Button
-                        onClick={() =>
-                          triggerToast(
-                            'Passkey verification initiated...',
-                            'info'
-                          )
-                        }
-                        disabled={isLoading}
-                        variant="secondary"
-                        className="w-full h-12 text-[15px] font-semibold rounded-[14px] justify-center gap-3 bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.06] hover:border-luma-indigo/30 text-luma-text-primary hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
-                      >
-                        <Key className="h-4.5 w-4.5 shrink-0 text-luma-yellow" />
-                        Sign in with Passkey
                       </Button>
                     </div>
                   </>

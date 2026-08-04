@@ -1,29 +1,27 @@
 import express from 'express';
 import {
-  bookEvent,
-  chat,
   createEvent,
+  updateEvent,
+  deleteEvent,
   getEvents,
+  discoverEvents,
   getEventsById,
   updateEventStatus,
 } from '../controller/event.controller.js';
 import verifyToken from '../middleware/verifyToken.js';
 import checkRole from '../middleware/checkRole.js';
 import upload from '../middleware/uploads.js';
+
 const router = express.Router();
 
-router.post(
-  '/events',
-  // verifyToken,
-  // checkRole(['organizer']),
-  upload.single('bannerUrl'),
-  createEvent
-);
+router.get('/', getEvents);
+router.get('/discover', discoverEvents);
+router.get('/:id', getEventsById);
 
-router.post('/bookevent/:id', bookEvent);
-router.get('/events', getEvents);
-router.patch('/events/:id/status' , updateEventStatus)
-router.get('/events/:id', getEventsById);
-router.post('/chat' , chat)
+router.post('/', verifyToken, upload.single('bannerUrl'), createEvent);
+router.patch('/:id', verifyToken, upload.single('bannerUrl'), updateEvent);
+router.delete('/:id', verifyToken, deleteEvent);
+
+router.patch('/:id/status', verifyToken, checkRole(['admin']), updateEventStatus);
 
 export default router;
