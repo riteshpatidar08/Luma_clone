@@ -29,8 +29,12 @@ function HomePage() {
   const [query, setQuery] = useState('');
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [totalEvents, setTotalEvents] = useState(0);
 
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -46,8 +50,15 @@ function HomePage() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await EventsAPI.list({ searchQuery: query, limit: 30 });
+      const res = await EventsAPI.list({
+        searchQuery: query,
+        category: selectedCategory === 'all' ? undefined : selectedCategory,
+        limit: 12,
+      });
       setEvents(res.data.data || []);
+      setNextCursor(res.data.pagination?.nextCursor || null);
+      setHasNextPage(Boolean(res.data.pagination?.hasNextPage));
+      setTotalEvents(res.data.totalEvents || 0);
     } catch (err) {
       console.error(err);
       const errMsg = err.response?.data?.message || err.message || 'Failed to fetch events';
@@ -56,20 +67,36 @@ function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [query]);
+  }, [query, selectedCategory]);
+
+  const loadMoreEvents = async () => {
+    if (!nextCursor || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const res = await EventsAPI.list({
+        searchQuery: query,
+        category: selectedCategory === 'all' ? undefined : selectedCategory,
+        cursor: nextCursor,
+        limit: 12,
+      });
+      setEvents((prev) => [...prev, ...(res.data.data || [])]);
+      setNextCursor(res.data.pagination?.nextCursor || null);
+      setHasNextPage(Boolean(res.data.pagination?.hasNextPage));
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || err.message || 'Failed to load more events';
+      triggerToast(errMsg, 'error');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
       getEvents();
-    }, 500);
+    }, 400);
     return () => clearTimeout(timer);
-  }, [query, getEvents]);
-
-  const filteredEvents = events.filter((event) => {
-    if (selectedCategory === 'all') return true;
-    const eventCategory = (event.category || event.calender || '').toLowerCase();
-    return eventCategory === selectedCategory.toLowerCase();
-  });
+  }, [query, selectedCategory, getEvents]);
 
   return (
     <div className="min-h-screen bg-luma-bg text-luma-text-primary selection:bg-luma-blue/30 selection:text-luma-white font-sans pb-20 relative">
@@ -174,44 +201,56 @@ function HomePage() {
                     Categories
                   </div>
                   <nav className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible gap-1 pb-2 lg:pb-0 scrollbar-none">
-                    {CATEGORIES.map((cat) => {
-                      const count = cat.id === 'all'
-                        ? events.length
-                        : events.filter((e) => (e.category || e.calender || '').toLowerCase() === cat.id).length;
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => setSelectedCategory(cat.id)}
-                          className={`flex items-center justify-between px-4 py-3 text-xs font-semibold rounded-2xl transition-all cursor-pointer whitespace-nowrap lg:whitespace-normal text-left w-full gap-3 border ${
-                            selectedCategory === cat.id
-                              ? 'bg-white/[0.08] text-white border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
-                              : 'text-luma-text-muted hover:text-white hover:bg-white/[0.02] border-transparent'
-                          }`}
-                        >
-                          <span>{cat.label}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${
-                            selectedCategory === cat.id
-                              ? 'bg-luma-blue/20 text-luma-blue border border-luma-blue/10'
-                              : 'bg-white/[0.03] text-luma-text-muted border border-white/[0.04]'
-                          }`}>
-                            {count}
-                          </span>
-                        </button>
-                      );
-                    })}
+                    {CATEGORIES.map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat.id)}
+                        className={`flex items-center justify-between px-4 py-3 text-xs font-semibold rounded-2xl transition-all cursor-pointer whitespace-nowrap lg:whitespace-normal text-left w-full gap-3 border ${
+                          selectedCategory === cat.id
+                            ? 'bg-white/[0.08] text-white border-white/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
+                            : 'text-luma-text-muted hover:text-white hover:bg-white/[0.02] border-transparent'
+                        }`}
+                      >
+                        <span>{cat.label}</span>
+                      </button>
+                    ))}
                   </nav>
                 </div>
 
-                <div className="lg:col-span-9 space-y-4">
-                  {filteredEvents.length === 0 ? (
+                <div className="lg:col-span-9 space-y-6">
+                  {events.length === 0 ? (
                     <div className="text-center py-20 bg-[#121315]/30 border border-white/[0.05] rounded-3xl p-6">
                       <Calendar className="w-8 h-8 text-luma-text-muted mx-auto mb-3" />
                       <h4 className="text-sm font-bold text-white">No events in this category</h4>
                       <p className="text-xs text-luma-text-muted mt-1">Try switching to another category or clearing search terms.</p>
                     </div>
                   ) : (
-                    filteredEvents.map((event) => <EventCard key={event._id} event={event} />)
+                    <>
+                      <div className="space-y-4">
+                        {events.map((event) => <EventCard key={event._id} event={event} />)}
+                      </div>
+
+                      {hasNextPage && (
+                        <div className="pt-6 flex flex-col items-center gap-3">
+                          <Button
+                            onClick={loadMoreEvents}
+                            disabled={isLoadingMore}
+                            variant="secondary"
+                            className="px-8 py-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.1] text-white text-xs font-semibold transition-all shadow-lg flex items-center gap-2"
+                          >
+                            {isLoadingMore ? (
+                              <>
+                                <Spinner size="xs" variant="primary" />
+                                <span>Loading more events...</span>
+                              </>
+                            ) : (
+                              <span>Load More Events ({events.length} of {totalEvents})</span>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

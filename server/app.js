@@ -48,6 +48,7 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 const checkoutLimiter = rateLimit({ windowMs: 60 * 1000, max: 10 });
 const chatLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
 
+
 app.get('/', (req, res) => {
   res.send('Server deployed....');
 });

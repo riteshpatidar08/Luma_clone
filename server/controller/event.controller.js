@@ -5,7 +5,8 @@ import User from '../models/user.model.js';
 import Notification from '../models/notification.model.js';
 import { textToEmbeddings } from '../config/gemini.js';
 import { signToken } from '../utils/jwt.js';
-
+import EventService from '../services/events.service.js';
+import { encodeCursor, decodeCursor } from '../utils/cursor.js';
 const buildEmbeddingText = (e) =>
   `${e.title}\n${e.category}\n${e.description}\nPrice: ${e.options?.ticketPrice ?? 0}\nStatus: ${e.status}\nStart: ${e.schedule?.startDate}\nLocation: ${e.location?.type === 'physical' ? e.location?.address : 'Online'}`;
 
@@ -208,21 +209,77 @@ export const updateEvent = async (req, res) => {
 
 export const getEvents = async (req, res) => {
   try {
-    const { limit = 12, page = 1, sort, searchQuery, category, location } = req.query;
+    const { limit = 12, page, sort, searchQuery, category, location, cursor } = req.query;
+    const numLimit = Math.max(1, Math.min(100, parseInt(limit, 10) || 12));
     const sortValue = sort === 'desc' ? -1 : 1;
+
     const filter = { status: 'approved', visibility: 'Public' };
     if (searchQuery) filter.$text = { $search: searchQuery };
     if (category && category !== 'all') filter.category = category;
     if (location && location !== 'all') filter['location.type'] = location;
 
-    const events = await Event.find(filter)
-      .sort({ 'schedule.startDate': sortValue })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit))
-      .populate('organizer', 'name avatarUrl');
-    const totalEvents = await Event.countDocuments(filter);
+    const sortQuery = {
+      'schedule.startDate': sortValue,
+      _id: sortValue,
+    };
 
-    res.json({ totalEvents, length: events.length, data: events });
+    if (cursor) {
+      const decoded = decodeCursor(cursor);
+      if (decoded) {
+        const cursorDate = new Date(decoded.d);
+        if (sortValue === 1) {
+          filter.$or = [
+            { 'schedule.startDate': { $gt: cursorDate } },
+            { 'schedule.startDate': cursorDate, _id: { $gt: decoded.id } },
+          ];
+        } else {
+          filter.$or = [
+            { 'schedule.startDate': { $lt: cursorDate } },
+            { 'schedule.startDate': cursorDate, _id: { $lt: decoded.id } },
+          ];
+        }
+      }
+    }
+
+    let eventsQuery = Event.find(filter);
+
+    if (!cursor && page && Number(page) > 1) {
+      eventsQuery = eventsQuery.skip((Number(page) - 1) * numLimit);
+    }
+
+    const events = await eventsQuery
+      .sort(sortQuery)
+      .limit(numLimit + 1)
+      .populate('organizer', 'name avatarUrl');
+
+    const hasNextPage = events.length > numLimit;
+    if (hasNextPage) {
+      events.pop();
+    }
+
+    const lastEvent = events.length > 0 ? events[events.length - 1] : null;
+    const nextCursor = hasNextPage && lastEvent
+      ? encodeCursor(lastEvent.schedule.startDate, lastEvent._id)
+      : null;
+
+    const totalEvents = await Event.countDocuments({
+      status: 'approved',
+      visibility: 'Public',
+      ...(category && category !== 'all' ? { category } : {}),
+      ...(location && location !== 'all' ? { 'location.type': location } : {}),
+      ...(searchQuery ? { $text: { $search: searchQuery } } : {}),
+    });
+
+    res.json({
+      totalEvents,
+      length: events.length,
+      data: events,
+      pagination: {
+        nextCursor,
+        hasNextPage,
+        limit: numLimit,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -275,7 +332,7 @@ export const discoverEvents = async (req, res) => {
 export const getEventsById = async (req, res) => {
   try {
     const { id } = req.params;
-    const event = await Event.findById(id).populate('organizer', 'name avatarUrl bio organizerProfile');
+    const event = await EventService.getSingleEvent(id);
     if (!event) {
       return res.status(404).json({ message: 'No event found' });
     }
@@ -331,3 +388,17 @@ export const updateEventStatus = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+// db.places.aggregate([
+//   {
+//   $geoNear: {
+//   near: { type: "Point", coordinates: [-73.98, 40.76] },
+//   distanceField: "dist.calculated",
+//   maxDistance: 2000, // Distance in meters
+//   query: { category: "Parks" },
+//   includeLocs: "dist.location",
+//   spherical: true
+//   }
+//   }
+//   ]);

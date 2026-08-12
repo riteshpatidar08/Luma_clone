@@ -26,6 +26,8 @@ import CheckInPage from './pages/organizer/CheckInPage';
 import AdminOverviewPage from './pages/admin/AdminOverviewPage';
 import AdminModerationPage from './pages/admin/AdminModerationPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
+import axios from 'axios';
+
 
 function App() {
   return (
